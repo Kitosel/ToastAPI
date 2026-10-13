@@ -1,7 +1,6 @@
 package pl.kiosel.toastapi.nms.v1_21_R4;
 
 import net.minecraft.advancements.*;
-import net.minecraft.advancements.critereon.ImpossibleTrigger;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundUpdateAdvancementsPacket;
 import net.minecraft.resources.ResourceLocation;
@@ -19,14 +18,19 @@ import java.util.*;
 public final class ToastImpl implements NmsToasts {
 
 	@Override
-	public void sendToast(Plugin plugin, Player player, String titleText, Material material, NmsAdvancementType frameType) {
-		ResourceLocation toastId = ResourceLocation.fromNamespaceAndPath("toastapi", "toast_" + UUID.randomUUID());
+	public boolean sendToast(Plugin plugin, Player player, String titleText, Material material, NmsAdvancementType frameType) {
+		ResourceLocation toastId = ResourceLocation.fromNamespaceAndPath("toastapi", "toast" + UUID.randomUUID());
 
 		Collection<AdvancementHolder> toAdd = getToAdd(titleText, material, frameType, toastId);
 		ClientboundUpdateAdvancementsPacket packetShow = getPacketShow(toastId, toAdd);
 
-		ServerGamePacketListenerImpl connection = ((CraftPlayer) player).getHandle().connection;
-		connection.send(packetShow);
+		ServerGamePacketListenerImpl connection;
+		try {
+			connection = ((CraftPlayer) player).getHandle().connection;
+			connection.send(packetShow);
+		} catch (Exception e) {
+			return false;
+		}
 
 		Bukkit.getScheduler().runTaskLaterAsynchronously(plugin, () -> {
 			if (player.isOnline()) {
@@ -40,6 +44,7 @@ public final class ToastImpl implements NmsToasts {
 				connection.send(packetClear);
 			}
 		}, 40L);
+		return true;
 	}
 
 	private ClientboundUpdateAdvancementsPacket getPacketShow(ResourceLocation toastId, Collection<AdvancementHolder> toAdd) {

@@ -1,71 +1,39 @@
-package pl.kiosel.rosacore.nms.v26.toast;
+package pl.kiosel.toastapi.nms.v26_1_R1;
 
 import net.minecraft.advancements.*;
+import net.minecraft.advancements.CriteriaTriggers;
+import net.minecraft.advancements.criterion.ImpossibleTrigger;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundUpdateAdvancementsPacket;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
+import net.minecraft.world.item.ItemStackTemplate;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.craftbukkit.inventory.CraftItemStack;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
-import pl.kiosel.rosacore.nms.api.toasts.NmsToasts;
+import pl.kiosel.toastapi.nms.api.NmsToasts;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
 import java.util.*;
 
 public final class ToastImpl implements NmsToasts {
 
-	private static final Method REQ_ALL_OF_METHOD;
-	private static final Constructor<?> CRITERION_CONSTRUCTOR;
-	private static final Constructor<?> IMPOSSIBLE_TRIGGER_INSTANCE_CONSTRUCTOR;
-
-	private static final Method TEMPLATE_FROM_STACK_METHOD;
-	private static final Constructor<?> DISPLAY_INFO_CONSTRUCTOR;
-
-	static {
-		try {
-			Class<?> reqClass = Class.forName("net.minecraft.advancements.AdvancementRequirements");
-			REQ_ALL_OF_METHOD = reqClass.getMethod("allOf", Collection.class);
-
-			Class<?> impossibleInstanceClass = Class.forName("net.minecraft.advancements.criterion.ImpossibleTrigger$TriggerInstance");
-			IMPOSSIBLE_TRIGGER_INSTANCE_CONSTRUCTOR = impossibleInstanceClass.getConstructor();
-
-			Class<?> criterionClass = Class.forName("net.minecraft.advancements.Criterion");
-			Class<?> triggerInstanceInterface = Class.forName("net.minecraft.advancements.CriterionTriggerInstance");
-			CRITERION_CONSTRUCTOR = criterionClass.getConstructor(triggerInstanceInterface);
-
-			Class<?> templateClass = Class.forName("net.minecraft.world.item.ItemStackTemplate");
-			TEMPLATE_FROM_STACK_METHOD = templateClass.getMethod("fromNonEmptyStack", net.minecraft.world.item.ItemStack.class);
-
-			Class<?> displayInfoClass = Class.forName("net.minecraft.advancements.DisplayInfo");
-			DISPLAY_INFO_CONSTRUCTOR = displayInfoClass.getConstructor(
-					templateClass,
-					Component.class,
-					Component.class,
-					Optional.class,
-					AdvancementType.class,
-					boolean.class,
-					boolean.class,
-					boolean.class
-			);
-		} catch (Exception e) {
-			throw new ExceptionInInitializerError("Couldn't initialize reflection for ToastImpl: " + e.getMessage());
-		}
-	}
-
 	@Override
-	public void sendToast(Plugin plugin, Player player, String titleText, Material material, NmsAdvancementType frameType) {
-		Identifier toastId = Identifier.fromNamespaceAndPath(plugin.getName().toLowerCase(Locale.ROOT), "toast_" + UUID.randomUUID());
+	public boolean sendToast(Plugin plugin, Player player, String titleText, Material material, NmsAdvancementType frameType) {
+		Identifier toastId = Identifier.fromNamespaceAndPath("toastapi", "toast" + UUID.randomUUID());
 
 		Collection<AdvancementHolder> toAdd = getToAdd(titleText, material, frameType, toastId);
 		ClientboundUpdateAdvancementsPacket packetShow = getPacketShow(toastId, toAdd);
 
-		ServerGamePacketListenerImpl connection = ((CraftPlayer) player).getHandle().connection;
-		connection.send(packetShow);
+		ServerGamePacketListenerImpl connection;
+		try {
+			connection = ((CraftPlayer) player).getHandle().connection;
+			connection.send(packetShow);
+		} catch (Exception e) {
+			return false;
+		}
 
 		Bukkit.getScheduler().runTaskLaterAsynchronously(plugin, () -> {
 			if (player.isOnline()) {
@@ -79,17 +47,13 @@ public final class ToastImpl implements NmsToasts {
 				connection.send(packetClear);
 			}
 		}, 40L);
+		return true;
 	}
 
 	private ClientboundUpdateAdvancementsPacket getPacketShow(Identifier toastId, Collection<AdvancementHolder> toAdd) {
 		Set<Identifier> toRemove = Collections.emptySet();
 
-		AdvancementRequirements requirements;
-		try {
-			requirements = (AdvancementRequirements) REQ_ALL_OF_METHOD.invoke(null, Collections.singleton("toast"));
-		} catch (Exception e) {
-			throw new RuntimeException(e);
-		}
+		AdvancementRequirements requirements = AdvancementRequirements.allOf(Collections.singleton("toast"));
 
 		AdvancementProgress progress = new AdvancementProgress();
 		progress.update(requirements);
@@ -111,40 +75,22 @@ public final class ToastImpl implements NmsToasts {
 		Component title = Component.literal(titleText);
 		Component description = Component.empty();
 
-		DisplayInfo displayInfo;
-		try {
-			Object iconTemplate = TEMPLATE_FROM_STACK_METHOD.invoke(null, icon);
+		DisplayInfo displayInfo = new DisplayInfo(
+				new ItemStackTemplate(icon.getItem()),
+				title,
+				description,
+				Optional.empty(),
+				AdvancementType.valueOf(frameType.getName().toUpperCase(Locale.ROOT)),
+				true,
+				false,
+				true
+		);
 
-			displayInfo = (DisplayInfo) DISPLAY_INFO_CONSTRUCTOR.newInstance(
-					iconTemplate,
-					title,
-					description,
-					Optional.empty(),
-					AdvancementType.valueOf(frameType.getName().toUpperCase(Locale.ROOT)),
-					true,
-					false,
-					true
-			);
-		} catch (Exception e) {
-			throw new RuntimeException(e);
-		}
+		Criterion<ImpossibleTrigger.TriggerInstance> criterionInstance =
+				new Criterion<>(CriteriaTriggers.IMPOSSIBLE, new ImpossibleTrigger.TriggerInstance());
 
-		Criterion<?> toastCriterion;
-		try {
-			Object triggerInstance = IMPOSSIBLE_TRIGGER_INSTANCE_CONSTRUCTOR.newInstance();
-			toastCriterion = (Criterion<?>) CRITERION_CONSTRUCTOR.newInstance(triggerInstance);
-		} catch (Exception e) {
-			throw new RuntimeException(e);
-		}
-
-		Map<String, Criterion<?>> criteria = Collections.singletonMap("toast", toastCriterion);
-
-		AdvancementRequirements requirements;
-		try {
-			requirements = (AdvancementRequirements) REQ_ALL_OF_METHOD.invoke(null, Collections.singleton("toast"));
-		} catch (Exception e) {
-			throw new RuntimeException(e);
-		}
+		Map<String, Criterion<?>> criteria = Collections.singletonMap("toast", criterionInstance);
+		AdvancementRequirements requirements = AdvancementRequirements.allOf(Collections.singleton("toast"));
 
 		Advancement advancement = new Advancement(
 				Optional.empty(),

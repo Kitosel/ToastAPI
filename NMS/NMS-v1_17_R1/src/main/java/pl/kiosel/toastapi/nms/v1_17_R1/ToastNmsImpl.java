@@ -1,4 +1,4 @@
-package pl.kiosel.rosacore.nms.v1_17_R1;
+package pl.kiosel.toastapi.nms.v1_17_R1;
 
 import pl.kiosel.toastapi.nms.api.NmsToasts;
 import pl.kiosel.toastapi.nms.api.ToastNMS;

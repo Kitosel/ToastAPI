@@ -1,6 +1,6 @@
 package pl.kiosel.toastapi.nms.api;
 
-public interface NMS {
+public interface ToastNMS {
 
     NmsToasts getToast();
 

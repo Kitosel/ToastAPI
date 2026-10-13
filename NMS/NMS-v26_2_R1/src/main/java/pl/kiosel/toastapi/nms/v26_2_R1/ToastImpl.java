@@ -1,7 +1,10 @@
-package java.pl.kiosel.toastapi.nms.v26_2_R1;
+package pl.kiosel.toastapi.nms.v26_2_R1;
+
 
 import net.minecraft.advancements.*;
-import net.minecraft.advancements.criterion.ImpossibleTrigger;
+import net.minecraft.advancements.triggers.CriteriaTriggers;
+import net.minecraft.advancements.triggers.Criterion;
+import net.minecraft.advancements.triggers.ImpossibleTrigger;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundUpdateAdvancementsPacket;
 import net.minecraft.resources.Identifier;
@@ -13,21 +16,26 @@ import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.craftbukkit.inventory.CraftItemStack;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
-import pl.kiosel.toasapi.nms.api.NmsToasts;
+import pl.kiosel.toastapi.nms.api.NmsToasts;
 
 import java.util.*;
 
 public final class ToastImpl implements NmsToasts {
 
 	@Override
-	public void sendToast(Plugin plugin, Player player, String titleText, Material material, NmsAdvancementType frameType) {
-		Identifier toastId = Identifier.fromNamespaceAndPath(plugin.getName().toLowerCase(Locale.ROOT), "toast_" + UUID.randomUUID());
+	public boolean sendToast(Plugin plugin, Player player, String titleText, Material material, NmsAdvancementType frameType) {
+		Identifier toastId = Identifier.fromNamespaceAndPath("toastapi", "toast" + UUID.randomUUID());
 
 		Collection<AdvancementHolder> toAdd = getToAdd(titleText, material, frameType, toastId);
 		ClientboundUpdateAdvancementsPacket packetShow = getPacketShow(toastId, toAdd);
 
-		ServerGamePacketListenerImpl connection = ((CraftPlayer) player).getHandle().connection;
-		connection.send(packetShow);
+		ServerGamePacketListenerImpl connection;
+		try {
+			connection = ((CraftPlayer) player).getHandle().connection;
+			connection.send(packetShow);
+		} catch (Exception e) {
+			return false;
+		}
 
 		Bukkit.getScheduler().runTaskLaterAsynchronously(plugin, () -> {
 			if (player.isOnline()) {
@@ -41,6 +49,7 @@ public final class ToastImpl implements NmsToasts {
 				connection.send(packetClear);
 			}
 		}, 40L);
+		return true;
 	}
 
 	private ClientboundUpdateAdvancementsPacket getPacketShow(Identifier toastId, Collection<AdvancementHolder> toAdd) {

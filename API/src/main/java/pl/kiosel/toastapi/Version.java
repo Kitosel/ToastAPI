@@ -1,6 +1,5 @@
-package pl.kiosel.toastapi.version;
+package pl.kiosel.toastapi;
 
-import lombok.Getter;
 import org.bukkit.Bukkit;
 
 import java.util.Collections;
@@ -12,8 +11,7 @@ import java.util.Map;
  * Recognised Minecraft/CraftBukkit revisions. Recognition does not mean that
  * a toast NMS adapter is bundled for that revision.
  */
-@Getter
-public enum Version {
+enum Version {
 
 	V1_8_R1(10801), V1_8_R2(10802), V1_8_R3(10803),
 	V1_9_R1(10901), V1_9_R2(10902),

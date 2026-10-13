@@ -6,7 +6,7 @@
     <parent>
         <groupId>pl.kiosel.toastapi</groupId>
         <artifactId>toastapi-parent</artifactId>
-        <version>1.0-SNAPSHOT</version>
+        <version>1.1-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <packaging>pom</packaging>
@@ -14,7 +14,11 @@
 
     <modules>
         <!--NMS-->
+        <module>NMS</module>
+
         <module>NMS-API</module>
+
+        <module>NMS-v1_16_R3</module>
         <module>NMS-v1_17_R1</module>
         <module>NMS-v1_18_R1</module>
         <module>NMS-v1_18_R2</module>
@@ -61,8 +65,10 @@
                                 <goal>remap</goal>
                             </goals>
                             <configuration>
+                                <!--suppress UnresolvedMavenProperty -->
                                 <srgIn>org.spigotmc:minecraft-server:${nms.server.version}:txt:maps-mojang</srgIn>
                                 <reverse>true</reverse>
+                                <!--suppress UnresolvedMavenProperty -->
                                 <remappedDependencies>org.spigotmc:spigot:${nms.server.version}:jar:remapped-mojang
                                 </remappedDependencies>
                                 <remappedArtifactAttached>true</remappedArtifactAttached>
@@ -78,7 +84,9 @@
                             <configuration>
                                 <inputFile>${project.build.directory}/${project.build.finalName}-remapped-obf.jar
                                 </inputFile>
+                                <!--suppress UnresolvedMavenProperty -->
                                 <srgIn>org.spigotmc:minecraft-server:${nms.server.version}:csrg:maps-spigot</srgIn>
+                                <!--suppress UnresolvedMavenProperty -->
                                 <remappedDependencies>org.spigotmc:spigot:${nms.server.version}:jar:remapped-obf
                                 </remappedDependencies>
                             </configuration>

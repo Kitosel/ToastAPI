@@ -1,13 +1,13 @@
 package pl.kiosel.toastapi.nms.v1_20_R3;
 
-import pl.kiosel.toastapi.nms.api.NMS;
+import pl.kiosel.toastapi.nms.api.ToastNMS;
 import pl.kiosel.toastapi.nms.api.NmsToasts;
 
-public final class NmsImpl implements NMS {
+public final class ToastNmsImpl implements ToastNMS {
 
 	private final NmsToasts toasts;
 
-	public NmsImpl() {
+	public ToastNmsImpl() {
 		this.toasts = new ToastImpl();
 	}
 

@@ -1,4 +1,4 @@
-package pl.kiosel.toastapi.nms.v1_18_R1;
+package pl.kiosel.toastapi.nms.v1_17_R1;
 
 import net.minecraft.advancements.*;
 import net.minecraft.advancements.critereon.ImpossibleTrigger;
@@ -8,8 +8,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
-import org.bukkit.craftbukkit.v1_18_R1.entity.CraftPlayer;
-import org.bukkit.craftbukkit.v1_18_R1.inventory.CraftItemStack;
+import org.bukkit.craftbukkit.v1_17_R1.entity.CraftPlayer;
+import org.bukkit.craftbukkit.v1_17_R1.inventory.CraftItemStack;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import pl.kiosel.toastapi.nms.api.NmsToasts;
@@ -19,19 +19,25 @@ import java.util.*;
 public final class ToastImpl implements NmsToasts {
 
 	@Override
-	public void sendToast(Plugin plugin, Player player, String titleText, Material material, NmsAdvancementType frameType) {
-		ResourceLocation toastId = ResourceLocation.tryParse(plugin.getName().toLowerCase(Locale.ROOT)/*, "toast_" + UUID.randomUUID()*/);
-		if (toastId == null) return;
+	public boolean sendToast(Plugin plugin, Player player, String titleText, Material material, NmsAdvancementType frameType) {
+		ResourceLocation toastId = ResourceLocation.tryParse("toastapi:toast" + UUID.randomUUID());
+
+		if (toastId == null) return false;
 
 		Criterion toastCriterion = new Criterion(new ImpossibleTrigger.TriggerInstance());
 		Map<String, Criterion> criteria = Collections.singletonMap("toast", toastCriterion);
 		String[][] requirements = RequirementsStrategy.AND.createRequirements(Collections.singleton("toast"));
 
-		Advancement advancement = getAdvancement(titleText, material, frameType, criteria, requirements);
+		Advancement advancement = getAdvancement(toastId, titleText, material, frameType, criteria, requirements);
 		ClientboundUpdateAdvancementsPacket packetShow = getPacketShow(toastId, advancement, criteria, requirements);
 
-		ServerGamePacketListenerImpl connection = ((CraftPlayer) player).getHandle().connection;
-		connection.send(packetShow);
+		ServerGamePacketListenerImpl connection;
+		try {
+			connection = ((CraftPlayer) player).getHandle().connection;
+			connection.send(packetShow);
+		} catch (Exception e) {
+			return false;
+		}
 
 		Bukkit.getScheduler().runTaskLaterAsynchronously(plugin, () -> {
 			if (player.isOnline()) {
@@ -44,6 +50,7 @@ public final class ToastImpl implements NmsToasts {
 				connection.send(packetClear);
 			}
 		}, 40L);
+		return true;
 	}
 
 	private ClientboundUpdateAdvancementsPacket getPacketShow(ResourceLocation toastId, Advancement advancement, Map<String, Criterion> criteria, String[][] requirements) {
@@ -63,7 +70,7 @@ public final class ToastImpl implements NmsToasts {
 		return new ClientboundUpdateAdvancementsPacket(false, toAdd, toRemove, toProgress);
 	}
 
-	private Advancement getAdvancement(String titleText, Material material, NmsAdvancementType frameType, Map<String, Criterion> criteria, String[][] requirements) {
+	private Advancement getAdvancement(ResourceLocation toastId, String titleText, Material material, NmsAdvancementType frameType, Map<String, Criterion> criteria, String[][] requirements) {
 		org.bukkit.inventory.ItemStack bukkitItem = new org.bukkit.inventory.ItemStack(material);
 		net.minecraft.world.item.ItemStack icon = CraftItemStack.asNMSCopy(bukkitItem);
 
@@ -82,7 +89,7 @@ public final class ToastImpl implements NmsToasts {
 		);
 
 		return new Advancement(
-				null,
+				toastId,
 				null,
 				displayInfo,
 				AdvancementRewards.EMPTY,

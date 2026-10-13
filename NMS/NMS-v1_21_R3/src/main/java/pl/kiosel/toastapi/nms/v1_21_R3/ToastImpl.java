@@ -19,16 +19,21 @@ import java.util.*;
 public final class ToastImpl implements NmsToasts {
 
 	@Override
-	public void sendToast(Plugin plugin, Player player, String titleText, Material material, NmsAdvancementType frameType) {
-		ResourceLocation toastId = ResourceLocation.tryBuild("toastapi", "toast_" + UUID.randomUUID());
+	public boolean sendToast(Plugin plugin, Player player, String titleText, Material material, NmsAdvancementType frameType) {
+		ResourceLocation toastId = ResourceLocation.tryBuild("toastapi", "toast" + UUID.randomUUID());
 
-		if (toastId == null) return;
+		if (toastId == null) return false;
 
 		Collection<AdvancementHolder> toAdd = getToAdd(titleText, material, frameType, toastId);
 		ClientboundUpdateAdvancementsPacket packetShow = getPacketShow(toastId, toAdd);
 
-		ServerGamePacketListenerImpl connection = ((CraftPlayer) player).getHandle().connection;
-		connection.send(packetShow);
+		ServerGamePacketListenerImpl connection;
+		try {
+			connection = ((CraftPlayer) player).getHandle().connection;
+			connection.send(packetShow);
+		} catch (Exception e) {
+			return false;
+		}
 
 		Bukkit.getScheduler().runTaskLaterAsynchronously(plugin, () -> {
 			if (player.isOnline()) {
@@ -41,6 +46,7 @@ public final class ToastImpl implements NmsToasts {
 				connection.send(packetClear);
 			}
 		}, 40L);
+		return true;
 	}
 
 	private ClientboundUpdateAdvancementsPacket getPacketShow(ResourceLocation toastId, Collection<AdvancementHolder> toAdd) {

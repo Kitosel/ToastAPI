@@ -1,4 +1,4 @@
-package pl.kiosel.rosacore.nms.v1_20_R3;
+package pl.kiosel.toastapi.nms.v1_20_R3;
 
 import net.minecraft.advancements.*;
 import net.minecraft.advancements.critereon.ImpossibleTrigger;
@@ -12,22 +12,27 @@ import org.bukkit.craftbukkit.v1_20_R3.entity.CraftPlayer;
 import org.bukkit.craftbukkit.v1_20_R3.inventory.CraftItemStack;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
-import pl.kiosel.toasapi.nms.api.NmsToasts;
+import pl.kiosel.toastapi.nms.api.NmsToasts;
 
 import java.util.*;
 
 public final class ToastImpl implements NmsToasts {
 
 	@Override
-	public void sendToast(Plugin plugin, Player player, String titleText, Material material, NmsAdvancementType frameType) {
-		ResourceLocation toastId = ResourceLocation.tryBuild(plugin.getName().toLowerCase(Locale.ROOT), "toast_" + UUID.randomUUID());
-		if (toastId == null) return;
+	public boolean sendToast(Plugin plugin, Player player, String titleText, Material material, NmsAdvancementType frameType) {
+		ResourceLocation toastId = ResourceLocation.tryBuild("toastapi", "toast" + UUID.randomUUID());
+		if (toastId == null) return false;
 
 		Collection<AdvancementHolder> toAdd = getToAdd(titleText, material, frameType, toastId);
 		ClientboundUpdateAdvancementsPacket packetShow = getPacketShow(toastId, toAdd);
 
-		ServerGamePacketListenerImpl connection = ((CraftPlayer) player).getHandle().connection;
-		connection.send(packetShow);
+		ServerGamePacketListenerImpl connection;
+		try {
+			connection = ((CraftPlayer) player).getHandle().connection;
+			connection.send(packetShow);
+		} catch (Exception e) {
+			return false;
+		}
 
 		Bukkit.getScheduler().runTaskLaterAsynchronously(plugin, () -> {
 			if (player.isOnline()) {
@@ -40,6 +45,7 @@ public final class ToastImpl implements NmsToasts {
 				connection.send(packetClear);
 			}
 		}, 40L);
+		return true;
 	}
 
 	private ClientboundUpdateAdvancementsPacket getPacketShow(ResourceLocation toastId, Collection<AdvancementHolder> toAdd) {
@@ -71,7 +77,7 @@ public final class ToastImpl implements NmsToasts {
 				icon,
 				title,
 				description,
-				null,
+				Optional.empty(),
 				AdvancementType.valueOf(frameType.getName().toUpperCase(Locale.ROOT)),
 				true,
 				false,
